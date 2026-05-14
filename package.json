@@ -11,7 +11,8 @@
     "build": "turbo build",
     "db:generate": "npm run db:generate --workspace=packages/db",
     "db:migrate": "npm run db:migrate --workspace=packages/db",
-    "db:seed": "npm run db:seed --workspace=packages/db"
+    "db:seed": "npm run db:seed --workspace=packages/db",
+    "prisma:studio": "prisma studio --config prisma.config.ts"
   },
   "devDependencies": {
     "turbo": "latest",

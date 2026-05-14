@@ -10,57 +10,59 @@ function getNextRunAt(cronExp: string): Date {
   return interval.next().toDate();
 }
 
-// Runs every minute — checks which cron triggers are due
+// Minute trigger runs every minute
 cron.schedule("* * * * *", async () => {
   console.log("Checking for due cron triggers...");
-
   const now = new Date();
+  console.log("Current time:", now.toISOString());
 
-  const dueTriggers = await prisma.cronTrigger.findMany({
-    where: {
-      nextRunAt: {
-        lte: now,
+  try {
+    const dueTriggers = await prisma.cronTrigger.findMany({
+      where: {
+        nextRunAt: {
+          lte: now,
+        },
+        tide: {
+          currentStatus: "ACTIVE",
+        },
       },
-      tide: {
-        currentStatus: "ACTIVE",
+      include: {
+        tide: true,
       },
-    },
-    include: {
-      tide: true,
-    },
-  });
-
-  if (dueTriggers.length === 0) {
-    console.log("No triggers due");
-    return;
-  }
-
-  console.log(`Found ${dueTriggers.length} due triggers`);
-
-  for (const trigger of dueTriggers) {
-    await prisma.$transaction(async (tx) => {
-      const flow = await tx.tideFlow.create({
-        data: {
-          tideId: trigger.tideId,
-          metadata: { source: "cron", cronExp: trigger.cronExp },
-        },
-      });
-
-      await tx.tideFlowOutbox.create({
-        data: {
-          tideFlowId: flow.id,
-        },
-      });
-
-      await tx.cronTrigger.update({
-        where: { id: trigger.id },
-        data: {
-          lastRunAt: now,
-          nextRunAt: getNextRunAt(trigger.cronExp),
-        },
-      });
-
-      console.log(`Fired cron trigger for tide: ${trigger.tideId}`);
     });
+
+    console.log("Due triggers found:", dueTriggers.length);
+
+    if (dueTriggers.length === 0) {
+      console.log("No triggers due");
+      return;
+    }
+
+    for (const trigger of dueTriggers) {
+      await prisma.$transaction(async (tx) => {
+        const flow = await tx.tideFlow.create({
+          data: {
+            tideId: trigger.tideId,
+            metadata: { source: "cron", cronExp: trigger.cronExp },
+          },
+        });
+
+        await tx.tideFlowOutbox.create({
+          data: { tideFlowId: flow.id },
+        });
+
+        await tx.cronTrigger.update({
+          where: { id: trigger.id },
+          data: {
+            lastRunAt: now,
+            nextRunAt: getNextRunAt(trigger.cronExp),
+          },
+        });
+
+        console.log(`Fired cron trigger for tide: ${trigger.tideId}`);
+      });
+    }
+  } catch (e) {
+    console.error("Scheduler error:", e);
   }
 });

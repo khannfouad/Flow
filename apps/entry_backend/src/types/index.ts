@@ -21,3 +21,13 @@ export const tideCreateSchema = z.object({
     }),
   ),
 });
+
+export const cronTideCreateSchema = z.object({
+  cronExp: z.string(),
+  actions: z.array(
+    z.object({
+      availableActionId: z.string(),
+      actionMetaData: z.any().optional(),
+    }),
+  ),
+});

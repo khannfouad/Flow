@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { authMiddleware } from "../middleware.js";
 import { prisma } from "@repo/db";
-import { tideCreateSchema } from "../types/index.js";
+import { tideCreateSchema, cronTideCreateSchema } from "../types/index.js";
+import cronParser from "cron-parser";
 
 const router = Router();
 
@@ -107,6 +108,70 @@ router.post("/draft", authMiddleware, async (req, res) => {
   return res.json({
     tideDraft,
   });
+});
+
+router.post("/cron", authMiddleware, async (req, res) => {
+  //@ts-ignore
+  const id: string = req.id;
+  const body = req.body;
+
+  const parsedData = cronTideCreateSchema.safeParse(body);
+
+  function formatDate(date: Date): string {
+    return date.toLocaleString("en-US", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+  }
+
+  if (!parsedData.success) {
+    return res.status(411).json({ message: "Incorrect inputs" });
+  }
+
+  // Validate cron expression
+  try {
+    cronParser.parseExpression(parsedData.data.cronExp);
+  } catch {
+    return res.status(400).json({ error: "Invalid cron expression" });
+  }
+
+  const nextRunAt = cronParser
+    .parseExpression(parsedData.data.cronExp)
+    .next()
+    .toDate();
+
+  const tideId = await prisma.$transaction(async (tx) => {
+    const tide = await tx.tide.create({
+      data: {
+        userId: parseInt(id),
+        triggerId: "cron",
+        actions: {
+          create: parsedData.data.actions.map((x, index) => ({
+            actionId: x.availableActionId,
+            sortingOrder: index,
+            metadata: x.actionMetaData,
+          })),
+        },
+      },
+    });
+
+    await tx.cronTrigger.create({
+      data: {
+        tideId: tide.id,
+        cronExp: parsedData.data.cronExp,
+        nextRunAt,
+      },
+    });
+
+    return tide.id;
+  });
+
+  return res.json({ tideId, nextRunAt: formatDate(nextRunAt) });
 });
 
 router.get("/:draftId/publish", authMiddleware, async (req, res) => {
@@ -288,6 +353,75 @@ router.post("/:tideId/webhook", async (req, res) => {
     console.error("Webhook transaction failed:", e);
     return res.status(500).json({ error: e });
   }
+});
+
+//cron created here & belwo it is started and stopped
+
+// Create a tide with a cron trigger
+
+// Start cron
+router.post("/:tideId/cron/start", authMiddleware, async (req, res) => {
+  const tideId = req.params.tideId;
+
+  function formatDate(date: Date): string {
+    return date.toLocaleString("en-US", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+  }
+
+  const cronTrigger = await prisma.cronTrigger.findUnique({
+    //@ts-ignore
+    where: { tideId },
+  });
+
+  if (!cronTrigger) {
+    return res
+      .status(404)
+      .json({ error: "No cron trigger found for this tide" });
+  }
+
+  const nextRunAt = cronParser
+    .parseExpression(cronTrigger.cronExp)
+    .next()
+    .toDate();
+
+  await prisma.$transaction(async (tx) => {
+    await tx.tide.update({
+      //@ts-ignore
+      where: { id: tideId },
+      data: { currentStatus: "ACTIVE" },
+    });
+
+    await tx.cronTrigger.update({
+      //@ts-ignore
+      where: { tideId },
+      data: { nextRunAt },
+    });
+  });
+
+  return res.json({
+    message: "Cron started",
+    nextRunAt: formatDate(nextRunAt),
+  });
+});
+
+// Stop cron
+router.post("/:tideId/cron/stop", authMiddleware, async (req, res) => {
+  const tideId = req.params.tideId;
+
+  await prisma.tide.update({
+    //@ts-ignore
+    where: { id: tideId },
+    data: { currentStatus: "PAUSED" },
+  });
+
+  return res.json({ message: "Cron stopped" });
 });
 
 export const tideRouter = router;
