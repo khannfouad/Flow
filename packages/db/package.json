@@ -13,6 +13,7 @@
     "build": "tsc",
     "db:generate": "prisma generate --config prisma.config.ts",
     "db:migrate": "prisma migrate deploy --config prisma.config.ts",
+    "db:migrate:dev": "prisma migrate dev --config prisma.config.ts",
     "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {

@@ -39,6 +39,7 @@ model Tide {
   trigger  Trigger?
   actions Action[]
   tideFlow TideFlow[]
+  cronTrigger CronTrigger? 
   currentStatus  Staus @default(ACTIVE)
   user User @relation(fields: [userId], references: [id])
   createdAtt DateTime @default(now())
@@ -90,4 +91,13 @@ model TideFlowOutbox {
   id String @id @default(uuid())
   tideFlowId String @unique
   tideFlow TideFlow @relation(fields: [tideFlowId], references: [id], onDelete: Cascade)
+}
+
+model CronTrigger {
+  id          String    @id @default(uuid())
+  tideId      String    @unique
+  cronExp     String
+  lastRunAt   DateTime?
+  nextRunAt   DateTime
+  tide        Tide      @relation(fields: [tideId], references: [id], onDelete: Cascade)
 }
