@@ -1,0 +1,93 @@
+
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+  previewFeatures = ["strictUndefinedChecks"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Staus {
+  ACTIVE
+  PAUSED
+  DELETED
+}
+
+
+model User {
+  id Int @default(autoincrement()) @id
+  name String
+  email String @unique
+  password String
+  tides Tide[]
+}
+
+
+model TideDraft {
+  id String @default(uuid()) @id
+  jsonData Json @default("{}")
+}
+
+
+model Tide {
+  id String @default(uuid()) @id
+  triggerId String
+  userId Int
+  trigger  Trigger?
+  actions Action[]
+  tideFlow TideFlow[]
+  currentStatus  Staus @default(ACTIVE)
+  user User @relation(fields: [userId], references: [id])
+  createdAtt DateTime @default(now())
+}
+
+model Trigger {
+  id String @default(uuid()) @id
+  tideId String @unique
+  triggerId String
+  metadata Json @default("{}")
+  type AvailableTriggers   @relation(fields: [triggerId], references: [id])
+  tide Tide                @relation(fields: [tideId], references: [id], onDelete: Cascade )
+}
+
+model Action {
+  id String @id @default(uuid())
+  tideId String
+  tide Tide @relation(fields: [tideId], references: [id], onDelete: Cascade)
+  actionId String
+  metadata Json @default("{}")
+  type AvailableAction @relation(fields: [actionId], references: [id])
+  sortingOrder Int @default(0)
+  trueStep Int @default(0)
+  falseStep Int @default(1)
+}
+
+model AvailableAction {
+  id String @id @default(uuid())
+  name String
+  actions Action[]
+}
+
+model AvailableTriggers {
+  id String @default(uuid()) @id
+  name String
+  triggers Trigger[]
+}
+
+model TideFlow {
+  id String @id @default(uuid())
+  tideId String
+  metadata Json
+  tide Tide @relation(fields: [tideId], references: [id], onDelete: Cascade)
+  tideFlowOutbox TideFlowOutbox?
+}
+
+
+model TideFlowOutbox {
+  id String @id @default(uuid())
+  tideFlowId String @unique
+  tideFlow TideFlow @relation(fields: [tideFlowId], references: [id], onDelete: Cascade)
+}
