@@ -17,7 +17,7 @@ cron.schedule("* * * * *", async () => {
   console.log("Current time:", now.toISOString());
 
   try {
-    const dueTriggers = await prisma.cronTrigger.findMany({
+    const triggerLeft = await prisma.cron.findMany({
       where: {
         nextRunAt: {
           lte: now,
@@ -31,14 +31,14 @@ cron.schedule("* * * * *", async () => {
       },
     });
 
-    console.log("Due triggers found:", dueTriggers.length);
+    console.log("triggers found => ", triggerLeft.length);
 
-    if (dueTriggers.length === 0) {
-      console.log("No triggers due");
+    if (triggerLeft.length === 0) {
+      console.log("No triggers reamaining");
       return;
     }
 
-    for (const trigger of dueTriggers) {
+    for (const trigger of triggerLeft) {
       await prisma.$transaction(async (tx) => {
         const flow = await tx.tideFlow.create({
           data: {
@@ -51,7 +51,7 @@ cron.schedule("* * * * *", async () => {
           data: { tideFlowId: flow.id },
         });
 
-        await tx.cronTrigger.update({
+        await tx.cron.update({
           where: { id: trigger.id },
           data: {
             lastRunAt: now,
@@ -63,6 +63,6 @@ cron.schedule("* * * * *", async () => {
       });
     }
   } catch (e) {
-    console.error("Scheduler error:", e);
+    console.error("Cron gives error = ", e);
   }
 });

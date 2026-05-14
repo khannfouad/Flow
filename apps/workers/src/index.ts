@@ -1,5 +1,9 @@
 import { Kafka } from "kafkajs";
 import { prisma } from "@repo/db";
+import type { JsonObject } from "@prisma/client/runtime/client";
+import { handleHttpRequest } from "./httpRequest.js";
+import { parse } from "./utils.js";
+import { sendEmail } from "./email.js";
 
 const TOPIC_NAME = "flow-events";
 
@@ -71,16 +75,32 @@ async function main() {
 
       try {
         if (currentAction.type.id === "email") {
-          const to = "youremail@gmail.com"; // hardcode for now
-          const body = "Tide triggered successfully!"; // hardcode for now
+          const originalMetaData = tideFlowDetails?.metadata;
+          const body = parse(
+            (currentAction.metadata as JsonObject)?.body as string,
+            originalMetaData,
+          );
+          const to = parse(
+            (currentAction.metadata as JsonObject)?.email as string,
+            originalMetaData,
+          );
           console.log(`Sending email to ${to}`);
-
-          // await sendEmail(to, body);
+          try {
+            await sendEmail(to, body);
+            console.log("Email sent successfully");
+          } catch (e) {
+            console.error("Email send failed:", e);
+          }
         }
 
         if (currentAction.type.id === "solana") {
           console.log(`Sending SOL to`);
           // await sendSol(address, amount);
+        }
+
+        if (currentAction.type.id === "http-request") {
+          const metadata = currentAction.metadata as JsonObject;
+          await handleHttpRequest(metadata);
         }
       } catch (e) {
         console.error("Action failed:", e);

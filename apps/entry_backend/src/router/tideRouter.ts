@@ -160,7 +160,7 @@ router.post("/cron", authMiddleware, async (req, res) => {
       },
     });
 
-    await tx.cronTrigger.create({
+    await tx.cron.create({
       data: {
         tideId: tide.id,
         cronExp: parsedData.data.cronExp,
@@ -375,21 +375,18 @@ router.post("/:tideId/cron/start", authMiddleware, async (req, res) => {
     });
   }
 
-  const cronTrigger = await prisma.cronTrigger.findUnique({
+  const cron = await prisma.cron.findUnique({
     //@ts-ignore
     where: { tideId },
   });
 
-  if (!cronTrigger) {
+  if (!cron) {
     return res
       .status(404)
       .json({ error: "No cron trigger found for this tide" });
   }
 
-  const nextRunAt = cronParser
-    .parseExpression(cronTrigger.cronExp)
-    .next()
-    .toDate();
+  const nextRunAt = cronParser.parseExpression(cron.cronExp).next().toDate();
 
   await prisma.$transaction(async (tx) => {
     await tx.tide.update({
@@ -398,7 +395,7 @@ router.post("/:tideId/cron/start", authMiddleware, async (req, res) => {
       data: { currentStatus: "ACTIVE" },
     });
 
-    await tx.cronTrigger.update({
+    await tx.cron.update({
       //@ts-ignore
       where: { tideId },
       data: { nextRunAt },
