@@ -4,7 +4,7 @@
 
 # Flow
 
-<img src="../../flow-diagram.jpg">
+<img src="./flow-diagram.jpg">
 
 Flow is a backend system (monorepo) built with Node.js, Express, Kafka, Prisma, and Turborepo all Dockerized for a user-friendly experience. Flow lets users create automated workflows (called Tides) that trigger actions based on webhooks or cron actions.
 
