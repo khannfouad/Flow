@@ -7,32 +7,42 @@ const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
 
 async function seeder() {
-  await prisma.availableTriggers.create({
-    data: {
-      id: "webhook",
-      name: "Webhook",
-    },
-  });
-  await prisma.availableTriggers.create({
-    data: {
-      id: "cron",
-      name: "Cron-Work",
-    },
-  });
+  await Promise.all([
+    prisma.availableTriggers.upsert({
+      where: { id: "webhook" },
+      update: {},
+      create: { id: "webhook", name: "Webhook" },
+    }),
+    prisma.availableTriggers.upsert({
+      where: { id: "cron" },
+      update: {},
+      create: { id: "cron", name: "Cron-Work" },
+    }),
+    prisma.availableAction.upsert({
+      where: { id: "email" },
+      update: {},
+      create: { id: "email", name: "Send-email" },
+    }),
+    prisma.availableAction.upsert({
+      where: { id: "sol-money" },
+      update: {},
+      create: { id: "sol-money", name: "Send-solana" },
+    }),
+    prisma.availableAction.upsert({
+      where: { id: "http-request" },
+      update: {},
+      create: { id: "http-request", name: "HTTP-Request" },
+    }),
+  ]);
 
-  await prisma.availableAction.create({
-    data: {
-      id: "email",
-      name: "Send-email",
-    },
-  });
-
-  await prisma.availableAction.create({
-    data: {
-      id: "sol-money",
-      name: "Send-solana",
-    },
-  });
+  console.log("Seeded all");
 }
 
-seeder();
+seeder()
+  .catch((e) => {
+    console.error(" Seed failed:", e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
