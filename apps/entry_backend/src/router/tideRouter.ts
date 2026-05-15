@@ -421,4 +421,23 @@ router.post("/:tideId/cron/stop", authMiddleware, async (req, res) => {
   return res.json({ message: "Cron stopped" });
 });
 
+router.post("/:tideId/cron/delete", authMiddleware, async (req, res) => {
+  const tideId = req.params.tideId;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.cron.delete({
+      //@ts-ignore
+      where: { tideId },
+    });
+
+    await tx.tide.update({
+      //@ts-ignore
+      where: { id: tideId },
+      data: { currentStatus: "DELETED" },
+    });
+  });
+
+  return res.json({ message: "Cron trigger deleted" });
+});
+
 export const tideRouter = router;

@@ -75,15 +75,26 @@ async function main() {
 
       try {
         if (currentAction.type.id === "email") {
-          const originalMetaData = tideFlowDetails?.metadata;
-          const body = parse(
-            (currentAction.metadata as JsonObject)?.body as string,
-            originalMetaData,
-          );
-          const to = parse(
-            (currentAction.metadata as JsonObject)?.email as string,
-            originalMetaData,
-          );
+          const originalMetaData = tideFlowDetails?.metadata as JsonObject;
+          const isCron = originalMetaData?.source === "cron";
+
+          let to: string;
+          let body: string;
+
+          if (isCron) {
+            to = (currentAction.metadata as JsonObject)?.email as string;
+            body = (currentAction.metadata as JsonObject)?.body as string;
+          } else {
+            to = parse(
+              (currentAction.metadata as JsonObject)?.email as string,
+              originalMetaData,
+            );
+            body = parse(
+              (currentAction.metadata as JsonObject)?.body as string,
+              originalMetaData,
+            );
+          }
+
           console.log(`Sending email to ${to}`);
           try {
             await sendEmail(to, body);

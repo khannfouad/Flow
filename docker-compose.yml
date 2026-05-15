@@ -157,9 +157,9 @@ services:
       KAFKA_BROKER: kafka:9092
       SMTP_HOST: smtp.gmail.com
       SMTP_PORT: 587
-      SMTP_USER: ${SMTP_USER}
-      SMTP_PASS: ${SMTP_PASS}
-      SMTP_FROM: ${SMTP_FROM}
+      SMTP_USER: codeclass255@gmail.com
+      SMTP_PASS: czsmbzhsktjmwktc
+      SMTP_FROM: codeclass255@gmail.com
     depends_on:
       seed:
         condition: service_completed_successfully
