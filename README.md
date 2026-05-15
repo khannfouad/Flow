@@ -24,6 +24,7 @@ Flow is a monorepo with six services:
 - Nodemailer for email
 - Turborepo for monorepo management
 - Docker + Docker Compose
+- Zod for Type Casting
 
 ## Getting Started
 
