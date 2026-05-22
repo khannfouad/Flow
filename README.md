@@ -25,6 +25,7 @@ Flow is a monorepo with six services:
 - Turborepo for monorepo management
 - Zod for Type sanitised input
 - Docker + Docker Compose
+- Zod for Type Casting
 
 ## Getting Started
 
